@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iterator>
+#include <mutex>
 #include <set>
 #include <sstream>
 
@@ -109,6 +110,8 @@ using namespace std::literals;
 namespace platf {
   using adapteraddrs_t = util::c_ptr<IP_ADAPTER_ADDRESSES>;
 
+  std::mutex mouse_keys_mutex;
+  bool mouse_keys_streaming = false;
   bool enabled_mouse_keys = false;
   MOUSEKEYS previous_mouse_keys_state;
 
@@ -1190,12 +1193,21 @@ namespace platf {
         }
       }
     }
+    {
+      std::lock_guard lock {mouse_keys_mutex};
+      mouse_keys_streaming = true;
+    }
     enable_mouse_keys();
   }
 
   void enable_mouse_keys() {
     // If there is no mouse connected, enable Mouse Keys to force the cursor to appear
     if (!GetSystemMetrics(SM_MOUSEPRESENT)) {
+      std::lock_guard lock {mouse_keys_mutex};
+      if (!mouse_keys_streaming || enabled_mouse_keys) {
+        return;
+      }
+
       BOOST_LOG(info) << "A mouse was not detected. Sunshine will enable Mouse Keys while streaming to force the mouse cursor to appear.";
 
       // Get the current state of Mouse Keys so we can restore it when streaming is over
@@ -1244,6 +1256,9 @@ namespace platf {
       fn_WlanCloseHandle(wlan_handle, nullptr);
       wlan_handle = nullptr;
     }
+
+    std::lock_guard lock {mouse_keys_mutex};
+    mouse_keys_streaming = false;
 
     // Restore Mouse Keys back to the previous settings if we turned it on
     if (enabled_mouse_keys) {
