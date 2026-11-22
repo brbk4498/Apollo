@@ -3,6 +3,7 @@
  * @brief Definitions for KMS screen capture.
  */
 // standard includes
+#include <algorithm>
 #include <errno.h>
 #include <fcntl.h>
 #include <filesystem>
@@ -90,14 +91,14 @@ namespace platf {
       }
 
       ~wrapper_fb() {
-        std::ranges::for_each(handles, [&](auto &handle) {
-          if (handle) {
-            struct drm_gem_close close_args = {};
-            close_args.handle = handle;
-
+        for (auto plane = std::begin(handles); plane != std::end(handles); ++plane) {
+          // Several framebuffer planes may share a single GEM handle.
+          if (*plane && std::find(std::begin(handles), plane, *plane) == plane) {
+            struct drm_gem_close close_args {};
+            close_args.handle = *plane;
             drmIoctl(card_fd, DRM_IOCTL_GEM_CLOSE, &close_args);
           }
-        });
+        }
 
         if (fb) {
           drmModeFreeFB(fb);
