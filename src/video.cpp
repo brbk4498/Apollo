@@ -824,14 +824,7 @@ namespace video {
         {"coder"s, &config::video.amd.amd_coder},
         {"enforce_hrd"s, &config::video.amd.amd_enforce_hrd},
       },
-      {
-        // SDR-specific options
-        {"profile"s, [](const config_t &cfg) {
-           if (cfg.profile == 66) return "baseline"s;
-           if (cfg.profile == 77) return "main"s;
-           return "high"s;
-         }},
-      },
+      {},  // SDR-specific options
       {},  // HDR-specific options
       {},  // YUV444 SDR-specific options
       {},  // YUV444 HDR-specific options
@@ -1577,7 +1570,13 @@ namespace video {
         case 0:
           // 10-bit h264 encoding is not supported by our streaming protocol
           assert(!config.dynamicRange);
-          ctx->profile = (config.chromaSamplingType == 1) ? AV_PROFILE_H264_HIGH_444_PREDICTIVE : AV_PROFILE_H264_HIGH;
+          if (config.chromaSamplingType == 1) {
+            ctx->profile = AV_PROFILE_H264_HIGH_444_PREDICTIVE;
+          } else if (video_format.name == "h264_amf"sv && config::video.amd.amd_coder == config::amd::coder_from_view("cavlc"sv)) {
+            ctx->profile = AV_PROFILE_H264_CONSTRAINED_BASELINE;
+          } else {
+            ctx->profile = AV_PROFILE_H264_HIGH;
+          }
           break;
 
         case 1:

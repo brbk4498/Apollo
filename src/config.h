@@ -9,6 +9,7 @@
 #include <chrono>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -16,6 +17,10 @@
 #include "nvenc/nvenc_config.h"
 
 namespace config {
+  namespace amd {
+    int coder_from_view(const std::string_view &coder);
+  }  // namespace amd
+
   // track modified config options
   inline std::unordered_map<std::string, std::string> modified_config_settings;
 
